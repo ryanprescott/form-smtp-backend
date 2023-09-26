@@ -9,6 +9,8 @@ import SMTPTransport from "nodemailer/lib/smtp-transport";
 dotenv.config();
 
 const app = express();
+app.use(express.static('public'));
+
 const upload = multer({
     storage: multer.memoryStorage(),
     limits: {
@@ -26,7 +28,6 @@ const sendMailPromise = (mailOptions: Mail.Options) => {
     const transport = createTransport({
         host: env.SMTP_SERVER,
         port: Number(env.SMTP_PORT),
-        secure: true,
         authMethod: 'LOGIN',
         auth: {
             user: env.SMTP_USERNAME,
@@ -65,7 +66,7 @@ const validateCaptcha = (token: string) => {
 }
 
 app.post("/submit", upload.single(env.FILE_UPLOAD_FIELD_KEY || 'file'), async (req, res) => {
-    if (env.HCAPTCHA_ENABLED) {
+    if (env.HCAPTCHA_ENABLED === 'true') {
         const { "h-captcha-response": token } = req.body;
 
         const result = await validateCaptcha(token);
@@ -104,9 +105,12 @@ app.post("/submit", upload.single(env.FILE_UPLOAD_FIELD_KEY || 'file'), async (r
                 }
             ] : undefined,
         }
-    ).catch(
+    ).then(
+        () => res.status(200).send({ success: true }),
         (e) => res.status(500).send({ error: e.message })
     );
+});
 
-    res.status(200).send({ success: true });
+app.listen(env.PORT || 3000, () => {
+    console.log(`Server started on port ${env.PORT || 3000}`);
 });
